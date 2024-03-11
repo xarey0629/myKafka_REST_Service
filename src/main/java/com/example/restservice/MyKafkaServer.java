@@ -51,28 +51,28 @@ public class MyKafkaServer {
             String value = config.get(key).asText();
             kafkaPros.setProperty(key, value);
         }
-        // Check does topic exist.
-        AdminClient admin = AdminClient.create(kafkaPros);
-        ListTopicsResult listTopics = admin.listTopics();
-        Set<String> names = listTopics.names().get();
-        boolean contains = names.contains(topicName);
-        if (!contains) {
-            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
-        }
 
-        var consumer = new KafkaConsumer(kafkaPros);
-        consumer.subscribe(Collections.singletonList(topicName));
-        while(true){
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
-            for (ConsumerRecord<String, String> record : records){
-                System.out.println("Received a message:");
-                System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
-                return record.value();
+        try{
+            // Check does topic exist.
+            AdminClient admin = AdminClient.create(kafkaPros);
+            ListTopicsResult listTopics = admin.listTopics();
+            Set<String> names = listTopics.names().get();
+            boolean contains = names.contains(topicName);
+            if (!contains) {
+                throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
             }
-//            else{
-//                System.out.println("No messages received\n");
-////                return "No messages received";
-//            }
+            var consumer = new KafkaConsumer(kafkaPros);
+            consumer.subscribe(Collections.singletonList(topicName));
+            while(true){
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                for (ConsumerRecord<String, String> record : records){
+                    System.out.println("Received a message:");
+                    System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+                    return record.value();
+                }
+            }
+        }catch (Exception e){
+            throw new TopicNotFoundException("User error found.");
         }
     }
 
@@ -90,26 +90,26 @@ public class MyKafkaServer {
             kafkaPros.setProperty(key, value);
         }
 
-        // Check does topic exist.
-        AdminClient admin = AdminClient.create(kafkaPros);
-        ListTopicsResult listTopics = admin.listTopics();
-        Set<String> names = listTopics.names().get();
-        boolean contains = names.contains(topicName);
-        if (!contains) {
-            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
-        }
-
         try{
+            // Check does topic exist.
+            AdminClient admin = AdminClient.create(kafkaPros);
+            ListTopicsResult listTopics = admin.listTopics();
+            Set<String> names = listTopics.names().get();
+            boolean contains = names.contains(topicName);
+            if (!contains) {
+                throw new TopicNotFoundException("User error found.");
+            }
+            String key = "S2568786";
             var producer = new KafkaProducer<String, String>(kafkaPros);
-            producer.send(new ProducerRecord<>(topicName, data), (recordMetadata, ex) -> {
+            producer.send(new ProducerRecord<>(topicName, key, data), (recordMetadata, ex) -> {
                 if (ex != null){
                     ex.printStackTrace();
                 }
                 else
-                    System.out.printf("Produced event to topic %s: data = %s.\n", topicName, data);
+                    System.out.printf("Produced event to topic %s: key = %s, data = %s.\n", topicName, key, data);
             });
         }catch (Exception e){
-            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
+            throw new TopicNotFoundException("User error found.");
         }
     }
 
