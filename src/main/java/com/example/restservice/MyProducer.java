@@ -1,5 +1,9 @@
 package com.example.restservice;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -8,16 +12,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.Random;
 
 public class MyProducer {
-//    String topicName = null;
-//    String data = null;
-
-    MyProducer(){
-//        this.topicName = topicName;
-//        this.data = data;
+    Properties kafkaPros;
+    MyProducer() throws IOException {
+        this.kafkaPros = MyProducer.loadConfig("configfile");
     }
 
     // We'll reuse this function to load properties from the Consumer as well
@@ -31,7 +34,28 @@ public class MyProducer {
         }
         return cfg;
     }
-//    public final String KafkaTopicConfig = "kafka.topic";
+
+    public String consume(String topicName, JsonNode[] configArray) throws IOException, InterruptedException{
+        for (JsonNode config : configArray) {
+            String key = config.fieldNames().next();
+            String value = config.get(key).asText();
+            kafkaPros.setProperty(key, value);
+        }
+        var consumer = new KafkaConsumer(kafkaPros);
+        consumer.subscribe(Collections.singletonList(topicName));
+        while(true){
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            for (ConsumerRecord<String, String> record : records){
+                System.out.println("Received a message:");
+                System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+                return record.value();
+            }
+//            else{
+//                System.out.println("No messages received\n");
+////                return "No messages received";
+//            }
+        }
+    }
 
     /**
      * Produce events to "myReadTopic".
@@ -39,9 +63,13 @@ public class MyProducer {
      * @throws IOException
      * @throws InterruptedException
      */
-    public void produce(String topicName, String data) throws IOException, InterruptedException {
+    public void produce(String topicName, String data, JsonNode[] configArray) throws IOException, InterruptedException {
         // TODO: configFile will be passed using a list of key-values as JSON in the BOD of the request.
-        Properties kafkaPros = MyProducer.loadConfig("/Users/edlin/Desktop/修課/UoE_Sem2/ACP/CW2_Program/acp_submission_2/configfile");
+        for (JsonNode config : configArray) {
+            String key = config.fieldNames().next();
+            String value = config.get(key).asText();
+            kafkaPros.setProperty(key, value);
+        }
 
         var producer = new KafkaProducer<String, String>(kafkaPros);
 

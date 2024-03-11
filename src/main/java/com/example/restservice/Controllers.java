@@ -1,5 +1,6 @@
 package com.example.restservice;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -11,10 +12,14 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 import javax.print.attribute.standard.Media;
 import java.io.IOException;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 public class Controllers {
+
+    public Controllers() throws IOException {
+    }
 
     @GetMapping("/uuid") // Map Get method to "/uuid"
     @ResponseBody
@@ -62,10 +67,16 @@ public class Controllers {
 
     MyProducer producer = new MyProducer();
 
+    @PostMapping("/readTopic/{topicName}")
+    public String readTopic(@PathVariable String topicName, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException {
+        // TODO
+        return producer.consume(topicName, configArray);
+    }
+
     @PostMapping("/writeTopic/{topicName}/{data}")
-    public void writeToTopic(@PathVariable String topicName, @PathVariable String data) throws IOException, InterruptedException {
-        // TODO:
-        producer.produce(topicName, data);
+    public void writeTopic(@PathVariable String topicName, @PathVariable String data, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException {
+        // TODO
+        producer.produce(topicName, data, configArray);
     }
 
 }
