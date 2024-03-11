@@ -2,18 +2,14 @@ package com.example.restservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import javax.print.attribute.standard.Media;
 import java.io.IOException;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 public class Controllers {
@@ -65,20 +61,26 @@ public class Controllers {
         return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
     }
 
-    MyProducer producer = new MyProducer();
+    MyKafkaServer myKafkaServer = new MyKafkaServer();
 
     @PostMapping("/readTopic/{topicName}")
-    public String readTopic(@PathVariable String topicName, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException {
+    public String readTopic(@PathVariable String topicName, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
         // TODO
-        return producer.consume(topicName, configArray);
+        return myKafkaServer.consume(topicName, configArray);
     }
 
     @PostMapping("/writeTopic/{topicName}/{data}")
-    public void writeTopic(@PathVariable String topicName, @PathVariable String data, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException {
+    public void writeTopic(@PathVariable String topicName, @PathVariable String data, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
         // TODO
-        producer.produce(topicName, data, configArray);
+        myKafkaServer.produce(topicName, data, configArray);
     }
 
+    @PostMapping("transformMessage/{readTopic}/{writeTopic}")
+    public void transformMessage(@PathVariable String readTopic, @PathVariable String writeTopic, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
+        // TODO
+        String data = myKafkaServer.consume(readTopic, configArray);
+        myKafkaServer.produce(writeTopic, data.toUpperCase(), configArray);
+    }
 }
 
 

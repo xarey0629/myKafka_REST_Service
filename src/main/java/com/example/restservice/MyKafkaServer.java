@@ -1,5 +1,14 @@
 package com.example.restservice;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.ListTopicsOptions;
+import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.KafkaFuture;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -15,12 +24,13 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
-import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
-public class MyProducer {
+public class MyKafkaServer {
     Properties kafkaPros;
-    MyProducer() throws IOException {
-        this.kafkaPros = MyProducer.loadConfig("configfile");
+    MyKafkaServer() throws IOException {
+        this.kafkaPros = MyKafkaServer.loadConfig("configfile");
     }
 
     // We'll reuse this function to load properties from the Consumer as well
@@ -35,12 +45,21 @@ public class MyProducer {
         return cfg;
     }
 
-    public String consume(String topicName, JsonNode[] configArray) throws IOException, InterruptedException{
+    public String consume(String topicName, JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
         for (JsonNode config : configArray) {
             String key = config.fieldNames().next();
             String value = config.get(key).asText();
             kafkaPros.setProperty(key, value);
         }
+        // Check does topic exist.
+        AdminClient admin = AdminClient.create(kafkaPros);
+        ListTopicsResult listTopics = admin.listTopics();
+        Set<String> names = listTopics.names().get();
+        boolean contains = names.contains(topicName);
+        if (!contains) {
+            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
+        }
+
         var consumer = new KafkaConsumer(kafkaPros);
         consumer.subscribe(Collections.singletonList(topicName));
         while(true){
@@ -63,7 +82,7 @@ public class MyProducer {
      * @throws IOException
      * @throws InterruptedException
      */
-    public void produce(String topicName, String data, JsonNode[] configArray) throws IOException, InterruptedException {
+    public void produce(String topicName, String data, JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
         // TODO: configFile will be passed using a list of key-values as JSON in the BOD of the request.
         for (JsonNode config : configArray) {
             String key = config.fieldNames().next();
@@ -71,18 +90,28 @@ public class MyProducer {
             kafkaPros.setProperty(key, value);
         }
 
-        var producer = new KafkaProducer<String, String>(kafkaPros);
+        // Check does topic exist.
+        AdminClient admin = AdminClient.create(kafkaPros);
+        ListTopicsResult listTopics = admin.listTopics();
+        Set<String> names = listTopics.names().get();
+        boolean contains = names.contains(topicName);
+        if (!contains) {
+            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
+        }
 
-//        final String topic = kafkaPros.getProperty(KafkaTopicConfig);
-        /**
-         * Send data to topic: topicName.
-         */
-        producer.send(new ProducerRecord<>(topicName, data), (recordMetadata, ex) -> {
-            if (ex != null)
-                ex.printStackTrace();
-            else
-                System.out.printf("Produced event to topic %s: data = %s.\n", topicName, data);
-        });
+        try{
+            var producer = new KafkaProducer<String, String>(kafkaPros);
+            producer.send(new ProducerRecord<>(topicName, data), (recordMetadata, ex) -> {
+                if (ex != null){
+                    ex.printStackTrace();
+                }
+                else
+                    System.out.printf("Produced event to topic %s: data = %s.\n", topicName, data);
+            });
+        }catch (Exception e){
+            throw new TopicNotFoundException("Topic doesn't exist: " + topicName);
+        }
     }
+
 }
 
