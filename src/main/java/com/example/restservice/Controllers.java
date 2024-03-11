@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @RestController
@@ -80,6 +81,26 @@ public class Controllers {
         // TODO
         String data = myKafkaServer.consume(readTopic, configArray);
         myKafkaServer.produce(writeTopic, data.toUpperCase(), configArray);
+    }
+
+    @PostMapping("store/{readTopic}/{writeTopic}")
+    public void store(@PathVariable String readTopic, @PathVariable String writeTopic, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException{
+//        JsonNode[] newConfigArray = new JsonNode[configArray.length - 1];
+//        System.arraycopy(configArray, 0, newConfigArray, 0, configArray.length - 1);
+        String key = configArray[configArray.length - 1].fieldNames().next();
+        String value = configArray[configArray.length - 1].get(key).asText();
+        String storageBaseURL = value;
+        String data = myKafkaServer.consume(readTopic, configArray);
+        String uuid = myKafkaServer.store(data, storageBaseURL);
+        myKafkaServer.produce(writeTopic, uuid, configArray);
+    }
+
+    @PostMapping("retrieve/{writeTopic}/{uuid}")
+    public void retrieve(@PathVariable String writeTopic, @PathVariable String uuid, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException{
+        String key = configArray[configArray.length - 1].fieldNames().next();
+        String storageBaseURL = configArray[configArray.length - 1].get(key).asText();
+        String json = myKafkaServer.retrieve(storageBaseURL, uuid);
+        myKafkaServer.produce(writeTopic, json, configArray);
     }
 }
 

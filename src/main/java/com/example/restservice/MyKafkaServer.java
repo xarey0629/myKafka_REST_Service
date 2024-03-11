@@ -1,12 +1,19 @@
 package com.example.restservice;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ListTopicsOptions;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -25,6 +33,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class MyKafkaServer {
@@ -112,6 +121,27 @@ public class MyKafkaServer {
             throw new TopicNotFoundException("User error found.");
         }
     }
+    public String store(String data, String storageBaseURL) throws IOException, InterruptedException, ExecutionException {
+        String json = "{\"uid\": \"S2568786\", \"datasetName\": \"TestDataSet\", \"data\": \"" + data + "\"}";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> requestEntity = new HttpEntity<>(json, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> responseEntity = restTemplate.postForEntity(storageBaseURL + "/write/blob", requestEntity, String.class);
+        if (responseEntity.getStatusCode().is2xxSuccessful()) {
+            System.out.println("Find UUID: " + responseEntity.getBody());
+            return responseEntity.getBody();
+        } else {
+            throw new RuntimeException("Failed to store data. HTTP response code: " + responseEntity.getStatusCodeValue());
+        }
+    }
 
+    public String retrieve(String storageBaseURL, String uuid) throws IOException, InterruptedException, ExecutionException {
+        String url = storageBaseURL + "/read/blob/" + uuid;
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
+        System.out.println("JSON: " + responseEntity.getBody());
+        return responseEntity.getBody();
+    }
 }
 
