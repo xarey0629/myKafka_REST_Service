@@ -33,3 +33,4 @@ build/
 .vscode/
 configfile
 *.DS_Store
+*.tar

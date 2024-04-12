@@ -15,8 +15,8 @@ import java.util.concurrent.ExecutionException;
 @RestController
 public class Controllers {
 
-    public Controllers() throws IOException {
-    }
+//    public Controllers() throws IOException {
+//    }
 
     @GetMapping("/uuid") // Map Get method to "/uuid"
     @ResponseBody
@@ -62,7 +62,14 @@ public class Controllers {
         return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
     }
 
-    MyKafkaServer myKafkaServer = new MyKafkaServer();
+    MyKafkaServer myKafkaServer;
+    {
+        try {
+            myKafkaServer = new MyKafkaServer();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @PostMapping("/readTopic/{topicName}")
     public String readTopic(@PathVariable String topicName, @RequestBody JsonNode[] configArray) throws IOException, InterruptedException, ExecutionException {
@@ -91,6 +98,7 @@ public class Controllers {
         String value = configArray[configArray.length - 1].get(key).asText();
         String storageBaseURL = value;
         String data = myKafkaServer.consume(readTopic, configArray);
+        // TODO: Should be UUID?
         String uuid = myKafkaServer.store(data, storageBaseURL);
         myKafkaServer.produce(writeTopic, uuid, configArray);
     }
